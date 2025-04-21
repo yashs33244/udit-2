@@ -1,0 +1,97 @@
+services:
+  # PostgreSQL database for SQL operations
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    command: mongod --replSet rs0 --bind_ip_all
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "rs.status().ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+
+  mongodb_be:
+    build:
+      context: ./mongodb_be
+      dockerfile: Dockerfile
+    container_name: mongodb_be
+    ports:
+      - "5001:5000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/uditdb?replicaSet=rs0
+      - JWT_SECRET=your_jwt_secret_key
+      - EMAIL_HOST=smtp.gmail.com
+      - EMAIL_PORT=587
+      - EMAIL_USER=yashs3324@gmail.com
+      - EMAIL_PASS=avhszmzkkkfqjtwa
+      - EMAIL_FROM=yashs3324@gmail.com
+      - CLIENT_URL=http://localhost:3000
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  nextjs-app:
+    build:
+      context: ./udit-assignment
+      dockerfile: Dockerfile
+    container_name: nextjs-app
+    ports:
+      - "3000:3000"
+    environment:
+      # Update DATABASE_URL to use the container name
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres?schema=public
+      - MONGODB_BE_URL=http://mongodb_be:5000
+      - NEXT_PUBLIC_MONGODB_BE_URL=http://localhost:5001
+      - PRISMA_HIDE_UPDATE_MESSAGE=true
+      - SKIP_ENV_VALIDATION=true
+      # Add email configuration
+      - EMAIL_SERVER_HOST=smtp.gmail.com
+      - EMAIL_SERVER_PORT=587
+      - EMAIL_SERVER_USER=yashs3324@gmail.com
+      - EMAIL_SERVER_PASSWORD=avhszmzkkkfqjtwa
+      - EMAIL_FROM=yashs3324@gmail.com
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+    depends_on:
+      mongodb_be:
+        condition: service_started
+      postgres:
+        condition: service_started
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  postgres-data:

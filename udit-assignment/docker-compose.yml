@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - mongodb
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/sqlnosqldemo
+      - MONGODB_URL=mongodb://mongodb:mongodb@mongodb:27017/sqlnosqldemo?authSource=admin
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - EMAIL_SERVER_HOST=smtp.gmail.com
+      - EMAIL_SERVER_PORT=465
+      - EMAIL_SERVER_USER={EMAIL_SERVER_USER}
+      - EMAIL_SERVER_PASSWORD={EMAIL_SERVER_PASSWORD}
+      - EMAIL_FROM={EMAIL_FROM}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: >
+      sh -c "
+        echo 'Waiting for databases to be ready...' &&
+        sleep 5 &&
+        echo 'Running Prisma migrations...' &&
+        npx prisma db push &&
+        npm run dev
+      "
+
+  postgres:
+    image: postgres:14
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=sqlnosqldemo
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  mongodb:
+    image: mongo:6
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=mongodb
+      - MONGO_INITDB_ROOT_PASSWORD=mongodb
+      - MONGO_INITDB_DATABASE=sqlnosqldemo
+    volumes:
+      - mongodb-data:/data/db
+
+volumes:
+  postgres-data:
+  mongodb-data:

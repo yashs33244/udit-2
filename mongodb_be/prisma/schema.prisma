@@ -1,0 +1,42 @@
+// This is your Prisma schema file for MongoDB backend
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mongodb"
+    url      = env("MONGODB_URI")
+}
+
+model User {
+    id                String            @id @default(auto()) @map("_id") @db.ObjectId
+    username          String
+    email             String            @unique
+    password          String
+    verified          Boolean           @default(false)
+    verificationToken String?
+    createdAt         DateTime          @default(now())
+    updatedAt         DateTime          @updatedAt
+    updateRequests    UpdateRequest[]
+    deletionRequests  DeletionRequest[]
+}
+
+model UpdateRequest {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    userId      String   @db.ObjectId
+    newUsername String
+    newEmail    String
+    token       String   @unique
+    createdAt   DateTime @default(now())
+    user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DeletionRequest {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    userId    String   @db.ObjectId
+    token     String   @unique
+    createdAt DateTime @default(now())
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

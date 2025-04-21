@@ -1,0 +1,28 @@
+FROM node:18-slim
+
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package.json package-lock.json* ./
+
+# Install dependencies but exclude bcrypt
+RUN grep -v "bcrypt" package.json > package.temp.json && \
+    mv package.temp.json package.json && \
+    npm install --legacy-peer-deps && \
+    npm install bcryptjs nodemailer @types/nodemailer
+
+# Copy the rest of the application
+COPY . .
+
+# Replace bcrypt with bcryptjs in source files
+RUN find ./app -type f -name "*.ts" -exec sed -i 's/from "bcrypt"/from "bcryptjs"/g' {} \;
+RUN find ./app -type f -name "*.tsx" -exec sed -i 's/from "bcrypt"/from "bcryptjs"/g' {} \;
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Expose the port
+EXPOSE 3000
+
+# Start the application
+CMD ["npm", "run", "dev"] 

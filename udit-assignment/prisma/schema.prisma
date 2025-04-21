@@ -1,0 +1,51 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// SQL Models (PostgreSQL)
+model SqlUser {
+  id                Int                  @id @default(autoincrement())
+  username          String
+  email             String               @unique
+  password          String
+  verified          Boolean              @default(false)
+  verificationToken String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  updateRequests    SqlUpdateRequest[]
+  deletionRequests  SqlDeletionRequest[]
+
+  @@map("sql_users")
+}
+
+model SqlUpdateRequest {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  newUsername String
+  newEmail    String
+  token       String   @unique
+  createdAt   DateTime @default(now())
+  user        SqlUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sql_update_requests")
+}
+
+model SqlDeletionRequest {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique
+  createdAt DateTime @default(now())
+  user      SqlUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sql_deletion_requests")
+}
+
+// NoSQL models have been moved to MongoDB
